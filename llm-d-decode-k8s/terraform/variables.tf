@@ -1,0 +1,49 @@
+variable "app_name" {
+  type        = string
+  description = "Name of the deployed application"
+  default     = "llm-d-decode-k8s"
+}
+
+variable "channel" {
+  type        = string
+  description = "Charmhub channel to deploy the charm from"
+  default     = "edge"
+}
+
+variable "constraints" {
+  type        = string
+  description = "Constraints to be used when deploying this application"
+  default     = "cores=4 mem=32G tags=anti-pod.app.kubernetes.io/name=llm-d-decode-k8s|llm-d-prefill-k8s,anti-pod.topology-key=kubernetes.io/hostname"
+}
+
+variable "devices" {
+  type        = map(string)
+  description = "Device allocations to be used when deploying this application"
+  default     = {
+    gpu = "1,nvidia.com/gpu"
+    ib  = "1,rdma/hca_shared"
+  }
+}
+
+variable "config" {
+  type        = map(string)
+  description = "Configuration to deploy this application with"
+  default     = {}
+}
+
+variable "model_name" {
+  type        = string
+  description = "Name of Juju model where the application is to be deployed"
+}
+
+variable "revision" {
+  type        = number
+  description = "Revision of the charm to deploy"
+  default     = null
+}
+
+variable "units" {
+  type        = number
+  description = "Number of units to deploy with this name and configuration"
+  default     = 1
+}

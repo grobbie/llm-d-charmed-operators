@@ -1,0 +1,100 @@
+type: charm
+name: llm-d-kv-cache-manager-k8s
+title: LLMD KV Cache Indexer
+summary: KV Cache Coordination for Disaggregated serving.
+description: Handles the compute-intensive prompt processing phase and generates the KV cache.
+
+base: ubuntu@24.04
+platforms:
+  amd64:
+  arm64:
+
+assumes:
+  - juju >= 3.6
+  - k8s-api
+
+parts:
+  charm:
+    plugin: uv
+    source: .
+    build-snaps:
+      - astral-uv
+      
+charm-user: non-root
+
+config:
+  options:
+    model-id:
+      description: The Hugging Face repo ID or path of the model.
+      type: string
+      default: ""
+    hf-token:
+      description: Hugging Face token for gated models.
+      type: string
+      default: ""
+    port:
+      description: The port on which the prefill worker will serve.
+      type: int
+      default: 8000
+    indexer-cache-size:
+      description: The cache capacity of the CostAware Memory index arrays.
+      type: int
+      default: 10000
+    tokenizer-model-name:
+      description: Name of the HF model topology.
+      type: string
+      default: "meta-llama/Meta-Llama-3-8B-Instruct"
+    tokenizer-workers-count:
+      description: Allocation density for threading tokenization streams.
+      type: int
+      default: 4
+    tokenizer-local:
+      description: Whether the HF tokenizer maps strictly onto local (airgapped) files.
+      type: boolean
+      default: false
+
+provides:
+  kv-cache-manager:
+    interface: kv-cache-manager
+  metrics-endpoint:
+    interface: prometheus_scrape
+  grafana-dashboard:
+    interface: grafana_dashboard
+
+requires:
+  logging:
+    interface: loki_push_api
+  tracing:
+    interface: tracing
+    limit: 1
+
+containers:
+  llm-d-kv-cache:
+    resource: llmd-image
+    uid: 65532
+    gid: 65532
+  uds-tokenizer:
+    resource: tokenizer-image
+    uid: 65532
+    gid: 65532
+
+resources:
+  llmd-image:
+    type: oci-image
+    description: OCI image for the LLMD KV Cache workload
+    upstream-source: "ghcr.io/llm-d/llm-d-kv-cache-manager:v0.5.1"
+  tokenizer-image:
+    type: oci-image
+    description: OCI image for the UDS tokenizer
+    upstream-source: "ghcr.io/llm-d/llm-d-uds-tokenizer:v0.6.0"
+
+storage:
+  tokenizers:
+    type: filesystem
+    description: Persistent volume to hold Hugging Face tokenizers
+    location: /tokenizers
+  tokenizer-uds:
+    type: filesystem
+    description: Unix Domain Socket volume for fast IPC
+    location: /tmp/tokenizer
+

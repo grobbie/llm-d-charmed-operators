@@ -1,0 +1,6 @@
+tokenizer:
+  modelName: "{{ tokenizer_model_name }}"
+  workers: {{ tokenizer_workers_count }}
+  config:
+    type: HFTokenizerConfig
+    local: {{ tokenizer_local | lower }}

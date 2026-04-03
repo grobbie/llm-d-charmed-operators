@@ -1,0 +1,97 @@
+type: charm
+name: llm-d-decode-k8s
+title: LLMD Decode Worker
+summary: Inference Decode worker for LLMD.
+description: Handles the memory-bound autoregressive decoding phase and caching.
+
+base: ubuntu@24.04
+platforms:
+  amd64:
+  arm64:
+
+assumes:
+  - juju >= 3.6
+  - k8s-api
+
+parts:
+  charm:
+    plugin: uv
+    source: .
+    build-snaps:
+      - astral-uv
+      
+charm-user: non-root
+
+config:
+  options:
+    model-id:
+      description: The Hugging Face repo ID or path of the model.
+      type: string
+      default: ""
+    hf-token:
+      description: Hugging Face token for gated models.
+      type: string
+      default: ""
+    port:
+      description: The port on which the decode worker will serve.
+      type: int
+      default: 8000
+    gpu-count:
+      description: The number of nvidia.com/gpu resources to request for the workload.
+      type: int
+      default: 1
+    enable-infiniband:
+      description: Force NCCL to map over InfiniBand networks for distributed tensor operations.
+      type: boolean
+      default: true
+
+    extra-args:
+      description: Additional customization flags appended natively to vllm serve.
+      type: string
+      default: "--gpu-memory-utilization 0.95 --max-model-len 8192"
+
+provides:
+  decode-worker:
+    interface: llm-d-decode
+  metrics-endpoint:
+    interface: prometheus_scrape
+  grafana-dashboard:
+    interface: grafana_dashboard
+
+requires:
+  kv-cache-manager:
+    interface: kv-cache-manager
+  logging:
+    interface: loki_push_api
+  tracing:
+    interface: tracing
+    limit: 1
+
+containers:
+  llm-d-decode:
+    resource: llmd-image
+    uid: 2000
+    gid: 0
+
+resources:
+  llmd-image:
+    type: oci-image
+    description: OCI image for the LLMD decode workload
+    upstream-source: "ghcr.io/llm-d/llm-d-cuda:v0.5.1"
+
+storage:
+  models:
+    type: filesystem
+    description: Persistent volume to hold Hugging Face models
+    location: /models
+  shared-memory:
+    type: filesystem
+    location: /dev/shm
+
+devices:
+  gpu:
+    type: gpu
+    description: "NVIDIA GPU"
+  ib:
+    type: ib
+    description: "Mellanox InfiniBand HCA"
